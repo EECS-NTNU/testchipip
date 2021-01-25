@@ -2,7 +2,7 @@ package testchipip
 
 import chipsalliance.rocketchip.config.Field
 import chisel3._
-import freechips.rocketchip.diplomacy.{BundleBridgeNexus, LazyModuleImp}
+import freechips.rocketchip.diplomacy.{BundleBridgeNexusNode, LazyModuleImp}
 import freechips.rocketchip.rocket.GenericTrace
 import freechips.rocketchip.subsystem.HasTiles
 import freechips.rocketchip.util.HeterogeneousBag
@@ -29,9 +29,8 @@ object GenericTraceOutputTop {
 // Use this trait:
 trait CanHaveGenericTraceIO { this: HasTiles =>
   val module: CanHaveGenericTraceIOModuleImp
-
   // Bind all the trace nodes to a BB; we'll use this to generate the IO in the imp
-  val genericTraceNexus = BundleBridgeNexus[GenericTrace]
+  val genericTraceNexus = BundleBridgeNexusNode[GenericTrace]()
   tiles.foreach { genericTraceNexus := _.genericTraceNode }
 }
 case class GenericTracePortParams(print: Boolean = false)
@@ -40,13 +39,13 @@ object GenericTracePortKey extends Field[Option[GenericTracePortParams]](None)
 trait CanHaveGenericTraceIOModuleImp extends LazyModuleImp {
   val outer: CanHaveGenericTraceIO with HasTiles
 
-    val genericTraceIO = p(GenericTracePortKey) map ( traceParams => {
+  val genericTraceIO = p(GenericTracePortKey) map ( traceParams => {
     val genericTraceSeq = (outer.genericTraceNexus.in.map(_._1))
     val tio = IO(Output(GenericTraceOutputTop(genericTraceSeq)))
 
-    (tio.generic_traces zip (outer.tiles zip genericTraceSeq)).foreach { case (port, (tile, gentrace)) =>
-      port.clock := tile.module.clock
-      port.reset := tile.module.reset.asBool
+    (tio.generic_traces zip (outer.tile_prci_domains zip genericTraceSeq)).foreach { case (port, (prci, gentrace)) =>
+      port.clock := prci.module.clock
+      port.reset := prci.module.reset.asBool
       port.data := gentrace
     }
 
