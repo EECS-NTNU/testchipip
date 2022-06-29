@@ -10,15 +10,15 @@ import freechips.rocketchip.util.HeterogeneousBag
 
 // A per-tile interface that includes the tile's clock and reset
 class TileGenericTraceIO(val bitWidth: Int) extends Bundle {
-  val clock = Clock()
-  val reset = Bool()
+  val clock: Clock = Clock()
+  val reset: Bool = Bool()
   val data = new GenericTrace(bitWidth)
 }
 
 // The IO matched on by the GenericTrace bridge: a wrapper around a heterogenous
 // bag of TileGenericTraceIO. Each entry is trace associated with a single tile
 class GenericTraceOutputTop(val bitWidths: Seq[Int]) extends Bundle {
-  val generic_traces = Output(HeterogeneousBag(bitWidths.map(w => new TileGenericTraceIO(w))))
+  val generic_traces: HeterogeneousBag[TileGenericTraceIO] = Output(HeterogeneousBag(bitWidths.map(w => new TileGenericTraceIO(w))))
 }
 
 object GenericTraceOutputTop {
@@ -53,7 +53,7 @@ trait CanHaveGenericTraceIOModuleImp extends LazyModuleImp {
       for ((trace, idx) <- tio.generic_traces.zipWithIndex ) {
         withClockAndReset(trace.clock, trace.reset) {
           when (trace.data.valid) {
-            printf(s"GENERIC TRACE ${idx}: %x\n", trace.data.bits.asUInt())
+            printf(s"GENERIC TRACE $idx: %x\n", trace.data.bits.asUInt)
           }
         }
       }
