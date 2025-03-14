@@ -1,5 +1,7 @@
 #include "testchip_tsi.h"
 #include <stdexcept>
+#include <stdlib.h>
+#include <iostream>
 
 testchip_tsi_t::testchip_tsi_t(int argc, char** argv, bool can_have_loadmem) : tsi_t(argc, argv)
 {
@@ -24,8 +26,45 @@ testchip_tsi_t::testchip_tsi_t(int argc, char** argv, bool can_have_loadmem) : t
     if (arg.find("+no_hart0_msip") == 0)
       write_hart0_msip = false;
   }
+
+  try{
+    shm = shared_memory_object(open_only, "vortex_shared_memory", read_write);
+    region = mapped_region(shm, read_write);
+    smo = static_cast<Smo*>(region.get_address());
+    scoped_lock<interprocess_mutex> lock(smo->mutex);
+    smo->condition.notify_one();
+    using_ipc_driver = true;
+  }
+  catch (std::exception){
+    using_ipc_driver = false;
+  }
+
 }
 
+void testchip_tsi_t::idle(){
+  if(using_ipc_driver) parse_command();
+  switch_to_target();
+}
+
+void testchip_tsi_t::parse_command(){
+  scoped_lock<interprocess_mutex> lock(smo->mutex, try_to_lock);
+  if(!lock.owns()) {
+    return;
+  }
+  switch (smo->command)
+    {
+    case READ:
+      smo->command = NONE;
+      memif().read(smo->address, smo->size, smo->data);
+      smo->condition.notify_one();
+      break;
+    case WRITE:
+      smo->command = NONE;
+      memif().write(smo->address, smo->size, smo->data);
+      smo->condition.notify_one();
+      break;
+    }
+}
 
 void testchip_tsi_t::write_chunk(addr_t taddr, size_t nbytes, const void* src)
 {

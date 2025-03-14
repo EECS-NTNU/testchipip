@@ -5,6 +5,7 @@
 
 #include <fesvr/tsi.h>
 #include <fesvr/htif.h>
+#include "vortex_ipc.h"
 
 class testchip_tsi_t : public tsi_t
 {
@@ -20,7 +21,8 @@ class testchip_tsi_t : public tsi_t
     tsi_t::load_program();
     is_loadmem = false;
   }
-  void idle() { switch_to_target(); }
+  void idle();
+  void parse_command();
 
  protected:
   virtual void load_mem_write(addr_t taddr, size_t nbytes, const void* src) { };
@@ -33,5 +35,9 @@ class testchip_tsi_t : public tsi_t
   bool is_loadmem;
   bool write_hart0_msip;
   std::vector<std::pair<uint64_t, uint32_t>> init_writes;
+  Smo* smo;
+  shared_memory_object shm;
+  mapped_region region;
+  bool using_ipc_driver;
 };
 #endif
