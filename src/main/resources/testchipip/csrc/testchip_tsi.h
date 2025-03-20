@@ -29,6 +29,7 @@ class testchip_tsi_t : public tsi_t
   virtual void load_mem_read(addr_t taddr, size_t nbytes, void* dst) { };
   void reset() override;
   bool has_loadmem;
+  bool using_ipc_driver;
 
  private:
 
@@ -38,6 +39,5 @@ class testchip_tsi_t : public tsi_t
   Smo* smo;
   shared_memory_object shm;
   mapped_region region;
-  bool using_ipc_driver;
 };
 #endif
